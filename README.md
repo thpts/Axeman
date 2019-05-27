@@ -1,17 +1,19 @@
-<p align="center">
-    <img align="center" style="width: 300px" src="https://github.com/CaliDog/Lumberjack/raw/master/img/logo.png">
-    <h3 align="center">Axeman</h3>
-    <p align="center">Harvester of certificates, bearer of flannel.</p>
-</p>
-
 ## What?
-Axeman is a utility for downloading, parsing, and storing <a href="https://www.certificate-transparency.org/what-is-ct">Certificate Transparency Lists</a> using python3's concurrency and multi-processing. Its aim is to download and parse certificates relatively quickly and efficiently, storing them in CSVs on the local filesystem. 
+Axeman is a utility for downloading, parsing, and storing <a
+href="https://www.certificate-transparency.org/what-is-ct">Certificate
+Transparency Lists</a> using python3's concurrency and multi-processing. Its aim
+is to download and parse certificates relatively quickly and efficiently,
+storing them as Base64 encoded DER on the local filesystem.
+
+This fork applies several fixes to deal with both output directory bugs in
+addition to output format, deviating away from the CSV format provided.
 
 ## Installing it
-Installation should be super straight forward, but you need a newer version of python (3.5+) to run it.
+Installation should be super straight forward, but you need a newer version of
+python (3.5+) to run it.
 
 ```
-pip3 install axeman
+pip3 install git+http://github.com/tphts/Axeman
 ```
 
 ## Usage
@@ -34,16 +36,6 @@ optional arguments:
   -c CONCURRENCY_COUNT  The number of concurrent downloads to run at a time
 ```
 
-## Demo
-
-This is Axeman dumping information on each CTL known by certificate-transparency.org
-```
-$ axeman -l
-```
-<img src="https://github.com/CaliDog/Lumberjack/raw/master/img/demo2.gif">
-This is axeman running in verbose mode and pulling down the SkyDiver CTL
-
-```
-$ axeman -v -u 'ct.googleapis.com/skydiver'
-```
-<img src="https://github.com/CaliDog/Lumberjack/raw/master/img/demo.gif">
+# License
+The original Axeman in addition to the changes applied within this fork are
+licensed under the MIT license.
