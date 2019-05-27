@@ -125,7 +125,7 @@ async def retrieve_certificates(loop, url=None, ctl_offset=0, output_directory='
             logging.info("Finished downloading and processing {}".format(log_info['url']))
 
 async def processing_coro(download_results_queue, output_dir="/tmp"):
-    logging.info("Starting processing coro and process pool")
+    logging.info("Starting processing coro and process pool, writing to {}".format(output_dir))
     process_pool = aioprocessing.AioPool(initargs=(output_dir,))
 
     done = False
@@ -163,7 +163,7 @@ async def processing_coro(download_results_queue, output_dir="/tmp"):
     await process_pool.coro_join()
 
 def process_worker(result_info, output_dir="/tmp"):
-    logging.debug("Worker {} starting...".format(os.getpid()))
+    logging.debug("Worker {} starting, using {}...".format(os.getpid(), output_dir))
     if not result_info:
         return
     try:
@@ -262,17 +262,23 @@ def main():
     parser.add_argument('-s', dest='start_offset', action='store', default=0,
                         help='Skip N number of lists before starting')
 
-    parser.add_argument('-l', dest="list_mode", action="store_true", help="List all available certificate lists")
+    parser.add_argument('-l', dest="list_mode", action="store_true",
+                        help="List all available certificate lists")
 
-    parser.add_argument('-u', dest="ctl_url", action="store", default=None, help="Retrieve this CTL only")
+    parser.add_argument('-u', dest="ctl_url", action="store", default=None,
+                        help="Retrieve this CTL only")
 
-    parser.add_argument('-z', dest="ctl_offset", action="store", default=0, help="The CTL offset to start at")
+    parser.add_argument('-z', dest="ctl_offset", action="store", default=0,
+                        help="The CTL offset to start at")
 
-    parser.add_argument('-o', dest="output_dir", action="store", default="/tmp", help="The output directory to store certificates in")
+    parser.add_argument('-o', dest="output_dir", action="store", default="/tmp",
+                        help="The output directory to store certificates in")
 
-    parser.add_argument('-v', dest="verbose", action="store_true", help="Print out verbose/debug info")
+    parser.add_argument('-v', dest="verbose", action="store_true",
+                        help="Print out verbose/debug info")
 
-    parser.add_argument('-c', dest='concurrency_count', action='store', default=50, type=int, help="The number of concurrent downloads to run at a time")
+    parser.add_argument('-c', dest='concurrency_count', action='store', default=50, type=int,
+                        help="The number of concurrent downloads to run at a time")
 
     args = parser.parse_args()
 
@@ -282,17 +288,22 @@ def main():
 
     handlers = [logging.FileHandler(args.log_file), logging.StreamHandler()]
 
+    log_str = '[%(levelname)s:%(name)s] %(asctime)s - %(message)s'
     if args.verbose:
-        logging.basicConfig(format='[%(levelname)s:%(name)s] %(asctime)s - %(message)s', level=logging.DEBUG, handlers=handlers)
+        logging.basicConfig(format=log_str, level=logging.DEBUG, handlers=handlers)
     else:
-        logging.basicConfig(format='[%(levelname)s:%(name)s] %(asctime)s - %(message)s', level=logging.INFO, handlers=handlers)
+        logging.basicConfig(format=log_str, level=logging.INFO, handlers=handlers)
 
     logging.info("Starting...")
 
     if args.ctl_url:
-        loop.run_until_complete(retrieve_certificates(loop, url=args.ctl_url, ctl_offset=int(args.ctl_offset), concurrency_count=args.concurrency_count))
+        loop.run_until_complete(retrieve_certificates(loop, url=args.ctl_url,
+                                                            ctl_offset=int(args.ctl_offset),
+                                                            output_directory=args.output_dir,
+                                                            concurrency_count=args.concurrency_count))
     else:
-        loop.run_until_complete(retrieve_certificates(loop, concurrency_count=args.concurrency_count))
+        loop.run_until_complete(retrieve_certificates(loop, output_directory=args.output_dir,
+                                                            concurrency_count=args.concurrency_count))
 
 if __name__ == "__main__":
     main()
