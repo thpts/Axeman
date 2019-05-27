@@ -159,70 +159,41 @@ async def processing_coro(download_results_queue, output_dir="/tmp"):
 
     await process_pool.coro_join()
 
-def process_worker(result_info, output_dir="/tmp"):
+def process_worker(result_info, output_dir):
     logging.debug("Worker {} starting, using {}...".format(os.getpid(), output_dir))
     if not result_info:
         return
+
+    cert_storage = '{}/certificates/{}'.format(output_dir, result_info['log_info']['url'].replace('/', '_'))
+
     try:
-        csv_storage = '{}/certificates/{}'.format(output_dir, result_info['log_info']['url'].replace('/', '_'))
-
-        csv_file = "{}/{}-{}.csv".format(csv_storage, result_info['start'], result_info['end'])
-
-        lines = []
-
         print("[{}] Parsing...".format(os.getpid()))
         for entry in result_info['entries']:
             mtl = certlib.MerkleTreeHeader.parse(base64.b64decode(entry['leaf_input']))
-
             cert_data = {}
 
-            if mtl.LogEntryType == "X509LogEntryType":
-                cert_data['type'] = "X509LogEntry"
+            if mtl.LogEntryType == 'X509LogEntryType':
+                cert_data['type'] = 'X509LogEntry'
                 chain = [crypto.load_certificate(crypto.FILETYPE_ASN1, certlib.Certificate.parse(mtl.Entry).CertData)]
                 extra_data = certlib.CertificateChain.parse(base64.b64decode(entry['extra_data']))
                 for cert in extra_data.Chain:
                     chain.append(crypto.load_certificate(crypto.FILETYPE_ASN1, cert.CertData))
             else:
-                cert_data['type'] = "PreCertEntry"
-                extra_data = certlib.PreCertEntry.parse(base64.b64decode(entry['extra_data']))
-                chain = [crypto.load_certificate(crypto.FILETYPE_ASN1, extra_data.LeafCert.CertData)]
-
-                for cert in extra_data.Chain:
-                    chain.append(
-                        crypto.load_certificate(crypto.FILETYPE_ASN1, cert.CertData)
-                    )
+                # We are skipping pre-certificates as we want to collect completed certificates
+                continue
 
             cert_data.update({
                 "leaf_cert": certlib.dump_cert(chain[0]),
                 "chain": [certlib.dump_cert(x) for x in chain[1:]]
             })
 
-            certlib.add_all_domains(cert_data)
-
-            cert_data['source'] = {
-                "url": result_info['log_info']['url'],
-            }
-
             chain_hash = hashlib.sha256("".join([x['as_der'] for x in cert_data['chain']]).encode('ascii')).hexdigest()
 
-            # header = "url, cert_index, chain_hash, cert_der, all_domains, not_before, not_after"
-            lines.append(
-                ",".join([
-                    result_info['log_info']['url'],
-                    str(entry['cert_index']),
-                    chain_hash,
-                    cert_data['leaf_cert']['as_der'],
-                    ' '.join(cert_data['leaf_cert']['all_domains']),
-                    str(cert_data['leaf_cert']['not_before']),
-                    str(cert_data['leaf_cert']['not_after'])
-                ]) + "\n"
-            )
+            cert_file = "{}/{}.der".format(cert_storage, chain_hash)
+            with open(cert_file, 'w') as f:
+                f.write(cert_data['leaf_cert']['as_der'])
 
-        print("[{}] Finished, writing CSV...".format(os.getpid()))
-
-        with open(csv_file, 'w') as f:
-            f.write("".join(lines))
-        print("[{}] CSV {} written!".format(os.getpid(), csv_file))
+        print("[{}] Certificate {} written!".format(os.getpid(), cert_file))
 
     except Exception as e:
         print("========= EXCEPTION =========")
